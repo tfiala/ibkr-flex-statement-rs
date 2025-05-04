@@ -57,7 +57,9 @@ mod tests {
 
     #[test]
     fn account_info_parses() -> Result<()> {
-        let result = Parser::new()?.parse_statement_contents(PARTIAL_STATEMENT_EXAMPLE)?;
+        let statements = Parser::new()?.parse_flex_query_response(PARTIAL_STATEMENT_EXAMPLE)?;
+        assert_eq!(statements.len(), 1);
+        let result = &statements[0];
 
         assert_eq!(
             result.account_info,

@@ -102,7 +102,7 @@ mod tests {
     use crate::currency::Currency;
     use anyhow::Result;
 
-    const FULL_STATEMENT_EXAMPLE: &str = r##"
+    const PARTIAL_STATEMENT_EXAMPLE: &str = r##"
         <FlexQueryResponse queryName="example-query" type="AF">
             <FlexStatements count="1">
                 <FlexStatement accountId="U1234567" fromDate="2025-04-25" toDate="2025-04-25" period="LastBusinessDay" whenGenerated="2025-04-26;13:34:28 EDT">
@@ -183,7 +183,9 @@ mod tests {
 
     #[test]
     fn cash_reports_parse() -> Result<()> {
-        let result = Parser::new()?.parse_statement_contents(FULL_STATEMENT_EXAMPLE)?;
+        let statements = Parser::new()?.parse_flex_query_response(PARTIAL_STATEMENT_EXAMPLE)?;
+        assert_eq!(statements.len(), 1);
+        let result = &statements[0];
 
         // Ensure we got two equity summaries.
         assert_eq!(result.cash_reports.len(), 3);

@@ -20,7 +20,7 @@ use fifo_performance_summary::FIFOPerformanceSummary;
 use net_stock_position::NetStockPosition;
 use node_utils::NodeWrapper;
 use open_position::OpenPosition;
-use roxmltree::Document;
+use roxmltree::{Document, Node};
 use statement_section::{StatementSection, StatementSectionWithTimezone};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -42,11 +42,13 @@ pub struct Statement {
 /// # Examples
 ///
 /// ```
-/// # Load the XML contents into a string from a file or from over the net.
-/// let statement_xml: &str = ...;
+/// use anyhow::Result;
+/// use ibkr_flex_statement::{Parser, Statement};
 ///
-/// let parser = Parser::new();
-/// let statement = parser.parse_statement_contents(statement_xml)?;
+/// let statement_xml: &str = "<FlexQueryResponse>...</FlexQueryResponse>";
+///
+/// let parser = Parser::new().unwrap();
+/// let statements: Vec<Statement> = parser.parse_flex_query_response(statement_xml).unwrap();
 /// ```
 pub struct Parser {
     pub timezone_map: HashMap<String, Tz>,
@@ -65,10 +67,10 @@ impl Parser {
 
     fn parse_section<T: StatementSection>(
         &self,
-        doc: &Document,
+        node: &Node,
         section_name: &str,
     ) -> Result<Vec<T>> {
-        doc.descendants()
+        node.descendants()
             .filter(|n| n.tag_name().name() == section_name)
             .map(|n| T::from_node(&NodeWrapper { node: n }).map_err(anyhow::Error::msg))
             .collect::<Result<Vec<T>>>()
@@ -76,10 +78,10 @@ impl Parser {
 
     fn parse_section_with_timezone<T: StatementSectionWithTimezone>(
         &self,
-        doc: &Document,
+        node: &Node,
         section_name: &str,
     ) -> Result<Vec<T>> {
-        doc.descendants()
+        node.descendants()
             .filter(|n| n.tag_name().name() == section_name)
             .map(|n| {
                 T::from_node(&NodeWrapper { node: n }, &self.timezone_map)
@@ -88,10 +90,8 @@ impl Parser {
             .collect::<Result<Vec<T>>>()
     }
 
-    pub fn parse_statement_contents(&self, statement_contents: &str) -> Result<Statement> {
-        let doc = Document::parse(statement_contents)?;
-
-        let account_infos = self.parse_section::<AccountInfo>(&doc, "AccountInformation")?;
+    fn parse_flex_statement(&self, node: &Node) -> Result<Statement> {
+        let account_infos = self.parse_section::<AccountInfo>(node, "AccountInformation")?;
         if account_infos.len() > 1 {
             return Err(anyhow::Error::msg(
                 "multiple account information sections found",
@@ -101,13 +101,13 @@ impl Parser {
         }
         let account_info = account_infos[0].clone();
 
-        let cash_reports = self.parse_section(&doc, "CashReportCurrency")?;
-        let equity_summaries = self.parse_section(&doc, "EquitySummaryByReportDateInBase")?;
+        let cash_reports = self.parse_section(node, "CashReportCurrency")?;
+        let equity_summaries = self.parse_section(node, "EquitySummaryByReportDateInBase")?;
         let fifo_performance_summaries =
-            self.parse_section(&doc, "FIFOPerformanceSummaryUnderlying")?;
-        let net_stock_positions = self.parse_section(&doc, "NetStockPosition")?;
-        let open_positions = self.parse_section(&doc, "OpenPosition")?;
-        let trades = self.parse_section_with_timezone(&doc, "Trade")?;
+            self.parse_section(node, "FIFOPerformanceSummaryUnderlying")?;
+        let net_stock_positions = self.parse_section(node, "NetStockPosition")?;
+        let open_positions = self.parse_section(node, "OpenPosition")?;
+        let trades = self.parse_section_with_timezone(node, "Trade")?;
 
         Ok(Statement {
             account_info,
@@ -118,6 +118,14 @@ impl Parser {
             open_positions,
             trades,
         })
+    }
+
+    pub fn parse_flex_query_response(&self, flex_query_response: &str) -> Result<Vec<Statement>> {
+        let doc = Document::parse(flex_query_response)?;
+        doc.descendants()
+            .filter(|n| n.tag_name().name() == "FlexStatement")
+            .map(|n| self.parse_flex_statement(&n).map_err(anyhow::Error::msg))
+            .collect::<Result<Vec<Statement>>>()
     }
 }
 
@@ -180,7 +188,9 @@ mod tests {
 
     #[test]
     fn parsing_succeeds() -> Result<()> {
-        let result = Parser::new()?.parse_statement_contents(FULL_STATEMENT_EXAMPLE)?;
+        let statements = Parser::new()?.parse_flex_query_response(FULL_STATEMENT_EXAMPLE)?;
+        assert_eq!(statements.len(), 1);
+        let result = &statements[0];
 
         // Ensure we got two equity summaries.
         assert_eq!(result.cash_reports.len(), 3);
