@@ -1,7 +1,9 @@
 [package]
 name = "ibkr-flex-statement"
+description = "Parser for InteractiveBrokers (IBKR) Flex-based query response XML broker statements."
 version = "0.2.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.98"
