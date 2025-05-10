@@ -4,6 +4,8 @@
     "conid",
     "Forex",
     "ibkr",
-    "roxmltree"
+    "MIDPX",
+    "roxmltree",
+    "rstest"
   ]
 }

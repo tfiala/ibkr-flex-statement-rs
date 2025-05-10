@@ -16,12 +16,17 @@ pub enum TradeSide {
 pub enum OpenCloseIndicator {
     Close,
     CloseOpen,
+    // TODO figure out what "" (none) means
+    None,
     Open,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum OrderType {
     Limit,
+    Market,
+    MidPrice,
+    Stop,
 }
 
 #[derive(Debug, PartialEq)]
@@ -50,8 +55,9 @@ impl<'a> TryFrom<&'a str> for OpenCloseIndicator {
             "C" => Ok(Self::Close),
             "C;O" => Ok(Self::CloseOpen),
             "O" => Ok(OpenCloseIndicator::Open),
+            "" => Ok(OpenCloseIndicator::None),
             _ => Err(anyhow::Error::msg(format!(
-                "unknown openClose indicator {}",
+                "unknown openClose indicator \"{}\"",
                 s
             ))),
         }
@@ -63,6 +69,9 @@ impl<'a> TryFrom<&'a str> for OrderType {
     fn try_from(s: &'a str) -> Result<Self> {
         match s {
             "LMT" => Ok(Self::Limit),
+            "MIDPX" => Ok(Self::MidPrice),
+            "MKT" => Ok(Self::Market),
+            "STP" => Ok(Self::Stop),
             _ => Err(anyhow::Error::msg(format!("unknown order type {}", s))),
         }
     }
