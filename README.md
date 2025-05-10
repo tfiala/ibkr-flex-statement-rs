@@ -212,5 +212,5 @@ Date/Time Separator: ; (semi-colon)
 
 ```toml
 [dependencies]
-ibkr-flex-statement = "0.3.3"
+ibkr-flex-statement = "0.3.5"
 ```
