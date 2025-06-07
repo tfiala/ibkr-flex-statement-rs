@@ -4,7 +4,7 @@ version = "0.3.6"
 edition = "2024"
 license = "MIT"
 description = "Parser for InteractiveBrokers (IBKR) Flex-based query response XML broker statements."
-homepage = "https://github.com/tfiala/ibkr-flex-statement-rs"
+repository = "https://github.com/tfiala/ibkr-flex-statement-rs"
 
 [dependencies]
 anyhow = "1.0.98"
